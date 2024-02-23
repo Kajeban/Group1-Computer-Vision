@@ -1,6 +1,26 @@
 import cv2
 import numpy as np
 
+def detect_objects(frame):
+    #hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #Convert to HSV colour range
+    
+    #red_mask = cv2.inRange(hsv, lower_red_boundary, upper_red_boundary) #Mask Red in Live View
+    red_contours, _ = cv2.findContours(red_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    pole_detected = False
+    kayaker_detected = False
+    x_pole, y_pole, w_pole, h_pole = 0, 0, 0, 0
+    
+    for red_contour in red_contours:
+        area = cv2.contourArea(red_contour)
+        
+        if area > 1000:
+            pole_detected = True
+            x_pole, y_pole, w_pole, h_pole = cv2.boundingRect(red_contour)
+            cv2.rectangle(frame, (x_pole, y_pole), (x_pole + w_pole, y_pole + h_pole), (0, 255, 0), 2)
+            
+    return pole_detected, kayaker_detected, (x_pole, y_pole, w_pole, h_pole)
+
 #camera = cv2.VideoCapture(0) #Open Pi Camera
 #image = cv2.imread('/home/pi/Desktop/Group1-Camera-Vision/Photos/IMG-20240223-WA0005.jpg')
 #image = cv2.imread('/home/pi/Desktop/Group1-Camera-Vision/Photos/IMG-20240223-WA0006.jpg')
@@ -40,10 +60,7 @@ upper_red_boundary = np.array([179, 255, 255]) #HSV Values for Red (Upper End)
 lower_purple_boundary = np.array([120, 50, 50])
 upper_purple_boundary = np.array([170, 255, 255])
 
-background_subtractor = cv2.createBackgroundSubtractorMOG2()
-start_point = None
-end_point = None
-direction = None
+previous_kayaker_center = None
 
 while(1):
     
@@ -51,7 +68,31 @@ while(1):
     #if not ret:
         #print("Camera Failed")
         #break
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #Convert to HSV colour range
+    red_mask = cv2.inRange(hsv, lower_red_boundary, upper_red_boundary) #Mask Red in Live View
     
+    pole_detected, kayaker_detected, pole_area = detect_objects(red_mask)
+    
+    if pole_detected and kayaker_detected:
+        x_kayaker, y_kayaker, w_kayaker, h_kayaker = pole_area
+        kayaker_center = (x_kayaker + w_kayaker // 2, y_kayaker + h_kayaker // 2)
+        
+        cv2.line(frame, kayaker_center, (x_pole + w_pole // 2, y_pole + h_pole // 2, (0, 0, 255), 2), (0, 0, 255), 2)
+        
+        if previous_object_center is not None:
+            direction_vector = (kayaker_center[0] - previous_kayaker_center[0], kayaker_center[1] - previous_kayaker_center[1])
+            
+            if direction_vetor[0] > 0:
+                direction = "Right"
+            elif direction_vector[0] < 0:
+                direction = "Left"
+            else:
+                direction = "None"
+            cv2.putText(frame, direction, (50, 50), cv2.FONT_ITALIC, 2, (0,0,255), 1)
+        
+        previous_kayaker_center = kayaker_center
+    
+    """
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #Convert to HSV colour range
 
     red_mask = cv2.inRange(hsv, lower_red_boundary, upper_red_boundary) #Mask Red in Live View
@@ -89,7 +130,7 @@ while(1):
         # Output direction to screen
         cv2.putText(frame, direction, (50, 50), cv2.FONT_ITALIC, 2, (0,0,255), 1)
         
-    """
+    
     for contour in contours:
         area = cv2.contourArea(contour)
         
@@ -169,7 +210,7 @@ while(1):
     cv2.imshow('Live Feed', frame) # Open Live Feed Window
     #cv2.imshow('Video Feed', video)
     #cv2.imshow("Purple", purple_mask)
-    cv2.imshow("Red", background_mask)
+    #cv2.imshow("Red", background_mask)
     
     # Close all program if 'e' is entered
     if cv2.waitKey(1) & 0xFF == ord('e'):
@@ -178,6 +219,7 @@ while(1):
 # Close all windows
 frame.release()
 cv2.destroyAllWindows()
+
 
 
 
