@@ -32,10 +32,10 @@ while(1):
     white_mask = cv2.inRange(hsv, lower_white_boundary, upper_white_boundary) #Mask Green in Live View    
     white_contours, _ = cv2.findContours(white_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
        
-    if white_contours:
-        x, y, w, h = cv2.boundingRect(white_contours[0])
+    if red_contours:
+        x, y, w, h = cv2.boundingRect(red_contours[0])
         
-        largest_contour = max(white_contours, key=cv2.contourArea)
+        largest_contour = max(red_contours, key=cv2.contourArea)
         
         M = cv2.moments(largest_contour)
         
