@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import time
 
 #camera = cv2.VideoCapture(0) #Open Pi Camera
 #image = cv2.imread('/home/pi/Desktop/Group1-Camera-Vision/Photos/IMG-20240223-WA0005.jpg')
@@ -10,7 +11,10 @@ import numpy as np
 #image = cv2.imread('/home/pi/Desktop/Group1-Camera-Vision/Photos/IMG-20240223-WA0010.jpg')
 #video = cv2.VideoCapture('/home/pi/Desktop/Group1-Camera-Vision/Photos/VID-20240223-WA0007.mp4')
 #video = cv2.VideoCapture('/home/pi/Desktop/Group1-Camera-Vision/Photos/VID-20240223-WA0009.mp4')
-video = cv2.VideoCapture('/home/pi/Desktop/Group1-Camera-Vision/Photos/reverse_clip.mp4')
+#video = cv2.VideoCapture('/home/pi/Desktop/Group1-Camera-Vision/Photos/reverse_clip.mp4')
+video = cv2.VideoCapture('./Photos/reverse_clip.mp4')
+
+frame_counter = 0
 
 #if image is None:
     #print("Image Error")
@@ -50,8 +54,12 @@ while(1):
     ret, frame = video.read() #Read Pi Camera
     #if not ret:
         #print("Camera Failed")
-        #break
-    
+    frame_counter += 1
+
+    if frame_counter == video.get(cv2.CAP_PROP_FRAME_COUNT):
+        frame_counter = 0
+        video.set(cv2.CAP_PROP_POS_FRAMES, 0)
+
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #Convert to HSV colour range
     blurred = cv2.GaussianBlur(frame, (5, 5), 0)
 
