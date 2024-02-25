@@ -53,12 +53,15 @@ while(1):
         #break
     
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #Convert to HSV colour range
+    blurred = cv2.GaussianBlur(frame, (5, 5), 0)
 
     red_mask = cv2.inRange(hsv, lower_red_boundary, upper_red_boundary) #Mask Red in Live View
     purple_mask = cv2.inRange(hsv, lower_purple_boundary, upper_purple_boundary)
     #red = cv2.bitwise_and(frame, frame, mask=red_mask) #combines two shades
     red_contours, _ = cv2.findContours(red_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     purple_contours, _ = cv2.findContours(purple_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    canny = cv2.Canny(blurred, 100, 200)
+    canny_contours = cv2.findContours(canny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
     background_mask = background_subtractor.apply(red_mask)
     contours, _ = cv2.findContours(background_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -167,7 +170,7 @@ while(1):
             
     """
     cv2.imshow('Live Feed', frame) # Open Live Feed Window
-    #cv2.imshow('Video Feed', video)
+    cv2.imshow('Video Feed', canny)
     #cv2.imshow("Purple", purple_mask)
     cv2.imshow("Red", background_mask)
     
