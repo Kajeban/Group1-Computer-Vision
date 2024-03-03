@@ -33,6 +33,7 @@ frame_counter = 0
 direction = ""
 overlaps = ""
 prev_centroids = []
+prev_red_area = 0 
 
 # Define range of red color in HSV
 lower_red = np.array([160,153,104])
@@ -97,7 +98,16 @@ while(1):
             yellow_points.append(point[0])
 
     red_area = sum(cv2.contourArea(contour) for contour in red_contours)
-    print(red_area)
+    
+    if prev_red_area == 0:
+        overlaps = ""
+    else:
+        if red_area < prev_red_area * 0.9:
+            overlaps = ("Intersects")
+        else:
+            overlaps = ("Nope!")
+            
+    prev_red_area = red_area
     
     if len(red_points) >= 2:
         # Fit a line to the red points
@@ -119,17 +129,13 @@ while(1):
 
         # Draw the line
         cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        red_area = sum(cv2.contourArea(contour) for contour in red_contours)
+        #red_area = sum(cv2.contourArea(contour) for contour in red_contours)
         #red_area = cv2.countNonZero(red_mask)
         #print(red_area)
         
         direction = "Not in Frame"
         # Check if any purple contour intersects the line
         if len(yellow_points) >= 2:
-            if (red_area == 0):
-                overlaps = "Insersects"
-            else:
-                overlaps = "No Insersects"
             for yellow in yellow_contours:
                     
                 # Calculate the centroid of the contour
