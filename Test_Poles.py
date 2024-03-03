@@ -1,8 +1,7 @@
 import cv2
 import numpy as np
-import time
 
-video = cv2.VideoCapture(0) #Open Pi Camera
+#camera = cv2.VideoCapture(0) #Open Pi Camera
 #image = cv2.imread('/home/pi/Desktop/Group1-Camera-Vision/Photos/IMG-20240223-WA0005.jpg')
 #image = cv2.imread('/home/pi/Desktop/Group1-Camera-Vision/Photos/IMG-20240223-WA0006.jpg')
 #image = cv2.imread('/home/pi/Desktop/Group1-Camera-Vision/Photos/IMG-20240223-WA0007.jpg')
@@ -11,9 +10,7 @@ video = cv2.VideoCapture(0) #Open Pi Camera
 #image = cv2.imread('/home/pi/Desktop/Group1-Camera-Vision/Photos/IMG-20240223-WA0010.jpg')
 #video = cv2.VideoCapture('/home/pi/Desktop/Group1-Camera-Vision/Photos/VID-20240223-WA0007.mp4')
 #video = cv2.VideoCapture('/home/pi/Desktop/Group1-Camera-Vision/Photos/VID-20240223-WA0009.mp4')
-#video = cv2.VideoCapture('/home/pi/Desktop/Group1-Camera-Vision/Photos/reverse_clip.mp4')
-
-frame_counter = 0
+video = cv2.VideoCapture('/home/pi/Desktop/Group1-Camera-Vision/Photos/reverse_clip.mp4')
 
 #if image is None:
     #print("Image Error")
@@ -22,6 +19,8 @@ frame_counter = 0
     #print("Video Error")
 
 direction = "" # Varibale for direction of paddles
+crossing = ""
+overlap = ""
 
 # Define White
 lower_white_boundary = np.array([0, 0, 200])
@@ -53,22 +52,15 @@ while(1):
     ret, frame = video.read() #Read Pi Camera
     #if not ret:
         #print("Camera Failed")
-    frame_counter += 1
-
-    if frame_counter == video.get(cv2.CAP_PROP_FRAME_COUNT):
-        frame_counter = 0
-        video.set(cv2.CAP_PROP_POS_FRAMES, 0)
-
+        #break
+    
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #Convert to HSV colour range
-    blurred = cv2.GaussianBlur(frame, (5, 5), 0)
 
     red_mask = cv2.inRange(hsv, lower_red_boundary, upper_red_boundary) #Mask Red in Live View
     purple_mask = cv2.inRange(hsv, lower_purple_boundary, upper_purple_boundary)
     #red = cv2.bitwise_and(frame, frame, mask=red_mask) #combines two shades
     red_contours, _ = cv2.findContours(red_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     purple_contours, _ = cv2.findContours(purple_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    canny = cv2.Canny(blurred, 100, 200)
-    canny_contours = cv2.findContours(canny, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
     background_mask = background_subtractor.apply(red_mask)
     contours, _ = cv2.findContours(background_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -77,7 +69,7 @@ while(1):
         
         pole_largest_contour = max(red_contours, key=cv2.contourArea) # Find largest green area 
         
-        x, y, w, h = cv2.boundingRect(pole_largest_contour) # Rectangle around green item
+        x, y, w, h = cv2.boundingRect(red_contour) # Rectangle around green item
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2) # Rectangle Frame in fed
         #green_pole_roi = frame[y:y+h, x:x+w]
         #green_pole_edges = cv2.Canny(green_pole_roi, 100, 200)
@@ -85,6 +77,17 @@ while(1):
         for purple_contour in purple_contours: # Run when red detected
             #kayaker_largest_contour = max(red_contours, key=cv2.contourArea) # Largest x area
             M = cv2.moments(purple_contour)
+            x1,y1,w1,h1 = cv2.boundingRect(purple_contour)
+            
+            if x1 < x + w and x1 + w1 > x and y1 < y + h and y1 + h1 > y:
+                overlap = "Overlapping"
+            else:
+                overlap = " Not Overlapping"
+            
+            if (x1 + w1 // 2) < (x + w // 2):
+                crossing = "Behind Pole"
+            else:
+                crossing = "Front of Pole"
         
             if M["m00"] != 0: # Moments to determine center
                 cX = int(M["m10"] / M["m00"])
@@ -98,6 +101,8 @@ while(1):
                
         # Output direction to screen
         cv2.putText(frame, direction, (50, 50), cv2.FONT_ITALIC, 2, (0,0,255), 1)
+        cv2.putText(frame, crossing, (200, 100), cv2.FONT_ITALIC, 2, (0,0,255), 1)
+        cv2.putText(frame, overlap, (100, 200), cv2.FONT_ITALIC, 2, (0,0,255), 1)
         
     """
     for contour in contours:
@@ -177,7 +182,7 @@ while(1):
             
     """
     cv2.imshow('Live Feed', frame) # Open Live Feed Window
-    cv2.imshow('Video Feed', canny)
+    #cv2.imshow('Video Feed', video)
     #cv2.imshow("Purple", purple_mask)
     cv2.imshow("Red", background_mask)
     
@@ -188,6 +193,7 @@ while(1):
 # Close all windows
 frame.release()
 cv2.destroyAllWindows()
+
 
 
 
