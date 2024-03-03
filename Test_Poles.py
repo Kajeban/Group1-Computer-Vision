@@ -69,7 +69,7 @@ while(1):
         
         pole_largest_contour = max(red_contours, key=cv2.contourArea) # Find largest green area 
         
-        x, y, w, h = cv2.boundingRect(red_contours) # Rectangle around green item
+        x, y, w, h = cv2.boundingRect(red_contour) # Rectangle around green item
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2) # Rectangle Frame in fed
         #green_pole_roi = frame[y:y+h, x:x+w]
         #green_pole_edges = cv2.Canny(green_pole_roi, 100, 200)

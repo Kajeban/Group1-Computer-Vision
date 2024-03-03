@@ -52,10 +52,11 @@ while(1):
         #green_pole_roi = frame[y:y+h, x:x+w]
         #green_pole_edges = cv2.Canny(green_pole_roi, 100, 200)
         
-        for red_contour in white_contours: # Run when red detected
+        for white_contour in white_contours: # Run when white detected
             #kayaker_largest_contour = max(red_contours, key=cv2.contourArea) # Largest x area
-            M = cv2.moments(red_contour)
-        
+            #pole_largest_contour1 = max(white_contours, key=cv2.contourArea) # Find largest white area 
+            M = cv2.moments(white_contour)
+            
             if M["m00"] != 0: # Moments to determine center
                 cX = int(M["m10"] / M["m00"])
                 cY = int(M["m01"] / M["m00"])
@@ -65,9 +66,11 @@ while(1):
                     direction = ("Right of Pole")
                 else:
                     direction = ("Left of Pole")
-               
+             
+        #cv2.circle(frame, (cX, cY), 5, (0, 0, 255), -1)
         # Output direction to screen
         cv2.putText(frame, direction, (50, 50), cv2.FONT_ITALIC, 2, (0,0,255), 1)
+        
             
     
     cv2.imshow('Live Feed', frame) # Open Live Feed Window

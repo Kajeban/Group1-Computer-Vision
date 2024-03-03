@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import time
 
-#camera = cv2.VideoCapture(0) #Open Pi Camera
+video = cv2.VideoCapture(0) #Open Pi Camera
 #image = cv2.imread('/home/pi/Desktop/Group1-Camera-Vision/Photos/IMG-20240223-WA0005.jpg')
 #image = cv2.imread('/home/pi/Desktop/Group1-Camera-Vision/Photos/IMG-20240223-WA0006.jpg')
 #image = cv2.imread('/home/pi/Desktop/Group1-Camera-Vision/Photos/IMG-20240223-WA0007.jpg')
@@ -12,7 +12,6 @@ import time
 #video = cv2.VideoCapture('/home/pi/Desktop/Group1-Camera-Vision/Photos/VID-20240223-WA0007.mp4')
 #video = cv2.VideoCapture('/home/pi/Desktop/Group1-Camera-Vision/Photos/VID-20240223-WA0009.mp4')
 #video = cv2.VideoCapture('/home/pi/Desktop/Group1-Camera-Vision/Photos/reverse_clip.mp4')
-video = cv2.VideoCapture('./Photos/reverse_clip.mp4')
 
 frame_counter = 0
 
