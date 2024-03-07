@@ -3,7 +3,7 @@ import numpy as np
 import time 
 
 video = cv2.VideoCapture(0)
-#video = cv2.VideoCapture('./Photos/reverse_clip.mp4')
+# video = cv2.VideoCapture('./Photos/reverse_clip.mp4')
 #video = cv2.VideoCapture('./Photos/VID-20240223-WA0009.mp4')
 #video = cv2.VideoCapture('./Photos/VID-20240223-WA0007.mp4')
 
@@ -11,8 +11,8 @@ video = cv2.VideoCapture(0)
 #video.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 #video.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
-def nothing(x):
-    pass
+# def nothing(x):
+#     pass
 
 # Function to check if a point is on the left or right side of the line
 def is_left_of_line(point, line_params):
@@ -21,7 +21,7 @@ def is_left_of_line(point, line_params):
     return y - (slope * x + intercept) > 0
 
 # cv2.namedWindow("Trackbars")
-
+# 
 # cv2.createTrackbar("L - H", "Trackbars", 0, 179, nothing)
 # cv2.createTrackbar("L - S", "Trackbars", 0, 255, nothing)
 # cv2.createTrackbar("L - V", "Trackbars", 0, 255, nothing)
@@ -30,11 +30,13 @@ def is_left_of_line(point, line_params):
 # cv2.createTrackbar("U - V", "Trackbars", 0, 255, nothing)
 
 frame_counter = 0
-direction = ""
-overlaps = ""
+direction = None
+overlaps = None
 prev_centroids = []
 prev_red_area = 0
-pass_ = ""
+prev_green_area = 0
+pass_ = None
+pole_colour = None
 
 previous_position = None
 movement_started = False
@@ -46,20 +48,24 @@ lower_red = np.array([160,153,104])
 upper_red = np.array([179,255,255])
 
 # Define Red in lab
-#lower_red = np.array([152,103,65])
-#upper_red = np.array([179,255,161])
+# lower_red = np.array([152,103,65])
+# upper_red = np.array([179,255,161])
     
 # Define Purple
 #lower_purple = np.array([125, 193, 47])
 #upper_purple = np.array([153, 255, 106])
 
 # Define Yellow
-lower_yellow = np.array([19, 110, 186])
-upper_yellow = np.array([47, 255, 255])
+lower_yellow = np.array([19, 114, 223])
+upper_yellow = np.array([27, 255, 255])
 
 # Define Yellow (Labs)
 # lower_yellow = np.array([15, 115, 170])
 # upper_yellow = np.array([110, 255, 211])
+
+# Define Green
+lower_green = np.array([33, 77, 93]) #HSV Values for Green (Lower End)
+upper_green = np.array([92, 255, 255]) #HSV Values for Green (Upper End) 
 
 while(1):
     # Convert BGR to HSV
@@ -74,7 +80,7 @@ while(1):
 #     u_h = cv2.getTrackbarPos("U - H", "Trackbars")
 #     u_s = cv2.getTrackbarPos("U - S", "Trackbars")
 #     u_v = cv2.getTrackbarPos("U - V", "Trackbars")
-
+# 
 #     lower_colour = np.array([l_h, l_s, l_v])
 #     upper_colour = np.array([u_h, u_s, u_v])
 #     masked = cv2.inRange(hsv, lower_colour, upper_colour)
@@ -84,21 +90,23 @@ while(1):
 
     frame = cv2.GaussianBlur(frame, (5,5), 0)
     
-    frame_counter += 1
-
-    if frame_counter == video.get(cv2.CAP_PROP_FRAME_COUNT):
-        frame_counter = 0
-        video.set(cv2.CAP_PROP_POS_FRAMES, 0)
+#     frame_counter += 1
+# 
+#     if frame_counter == video.get(cv2.CAP_PROP_FRAME_COUNT):
+#         frame_counter = 0
+#         video.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
     # Threshold the HSV image to get only red colors
     red_mask = cv2.inRange(hsv, lower_red, upper_red)
     #purple_mask = cv2.inRange(hsv, lower_purple, upper_purple)
     yellow_mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
+    green_mask = cv2.inRange(hsv, lower_green, upper_green) #Mask Green in Live View
 
     # Find contours
     red_contours, _ = cv2.findContours(red_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     #purple_contours, _ = cv2.findContours(purple_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     yellow_contours, _ = cv2.findContours(yellow_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    green_contours, _ = cv2.findContours(green_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
     # Extract red points from contours
     red_points = []
@@ -106,44 +114,47 @@ while(1):
         for point in red:
             red_points.append(point[0])
     
+    green_points = []
+    for green in green_contours:
+        for point in green:
+            green_points.append(point[0])
+    
     yellow_points = []
     for yellow in yellow_contours:
         for point in yellow:
             yellow_points.append(point[0])
 
-    red_area = sum(cv2.contourArea(contour) for contour in red_contours)
+#     red_area = sum(cv2.contourArea(contour) for contour in red_contours)
+    green_area = sum(cv2.contourArea(contour) for contour in green_contours)
     
-#     if prev_red_area == 0:
-#         overlaps = ""
-#     else:
-#         if red_area < prev_red_area * 0.9:
-#             overlaps = ("Intersects")
-#             
-#     prev_red_area = red_area
-    
-    if len(red_points) >= 2:
-        # Fit a line to the red points
-        [vx, vy, x, y] = cv2.fitLine(np.array(red_points), cv2.DIST_L2, 0, 0.01, 0.01)
+    if (len(red_points) >= 10) or (len(green_points) >= 10):
+        
+        if len(red_points) > len(green_points):
+            pole_colour = "Red"
+            [vx, vy, x, y] = cv2.fitLine(np.array(red_points), cv2.DIST_L2, 0, 0.01, 0.01)
+            red_area = sum(cv2.contourArea(contour) for contour in red_contours)
+        elif len(green_points) >= len(red_points):
+            pole_colour = "Green"
+            [vx, vy, x, y] = cv2.fitLine(np.array(green_points), cv2.DIST_L2, 0, 0.01, 0.01)
+            green_area = sum(cv2.contourArea(contour) for contour in green_contours)
+            
+        # Fit a line to the red point
+#         [vx, vy, x, y] = cv2.fitLine(np.array(red_points if pole_colour == "Red" else green_points, dtype=np.int64), cv2.DIST_L2, 0, 0.01, 0.01)
         slope = vy / vx
         intercept = y - (slope * x)
 
         # Calculate endpoints of the line to draw
         height, width, _ = frame.shape
         x1 = 0
-        y1 = int((slope * x1 + intercept).item())
+        y1 = (slope * x1 + intercept).item()
         x2 = width - 1
-        y2 = int((slope * x2 + intercept).item())
+        y2 = (slope * x2 + intercept).item()
         
-        x1 = max(min(x1, width -1), 0)
-        y1 = max(min(y1, height -1), 0)
-        x2 = max(min(x2, width -1), 0)
-        y2 = max(min(y2, height -1), 0)        
+        y1 = max(min(y1, 2147483647), -2147483647)
+        y2 = max(min(y2, 2147483647), -2147483647)
 
         # Draw the line
-        cv2.line(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        #red_area = sum(cv2.contourArea(contour) for contour in red_contours)
-        #red_area = cv2.countNonZero(red_mask)
-        #print(red_area)
+        cv2.line(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
         
         direction = "Not in Frame"
         # Check if any purple contour intersects the line
@@ -176,36 +187,34 @@ while(1):
                     if crossed_pole and direction_after_crossing is None:
                         if is_left_of_line(centroid, (slope, intercept)):
                             direction_after_crossing = "Left"
-                            
-                            if red_area < prev_red_area * 0.7:
-                                overlaps = ("Intersects")
-                                    
-                            prev_red_area = red_area
-                            
+                        
                         else:
                             direction_after_crossing = "Right"
                             
+                        if (pole_colour == "Green"):
+                            if green_area < prev_green_area * 0.7:
+                                overlaps = ("Intersects")
+                                
+                            prev_green_area = green_area
+                            
+                        elif (pole_colour == "Red"):
                             if red_area < prev_red_area * 0.7:
                                 overlaps = ("Intersects")
-                                    
+                            
                             prev_red_area = red_area
                             
     if direction_after_crossing:
-        print("Direction after crossing:", direction_after_crossing)
+        print(direction_after_crossing)
         if ((overlaps == "Intersects") and (direction_after_crossing == "Left")):
             pass_ = "Gate Successfully Negotiated"
-#         direction_after_crossing = None
     
-    cv2.putText(frame, "Position: {}".format(direction), (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
-    cv2.putText(frame, "Status: {}".format(pass_), (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
-    cv2.putText(frame, "Direction: {}".format(direction_after_crossing), (10,100), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
-    cv2.putText(frame, "Overlaps: {}".format(overlaps), (10,120), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
+    cv2.putText(frame, "Detcting Pole: {}".format(pole_colour), (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
+    cv2.putText(frame, "Position: {}".format(direction), (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
+    cv2.putText(frame, "Status: {}".format(pass_), (10,100), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
     cv2.imshow('Frame', frame)
-    cv2.imshow('Red Mask', red_mask)
-    #cv2.imshow('purple mask', purple_mask)
-    cv2.imshow('Yellow Mask', yellow_mask)
-    #if overlaps:
-        #time.sleep(1)
+    cv2.imshow('Green', yellow_mask)
+    
+    
     direction_after_crossing = None
     overlaps = None
     
