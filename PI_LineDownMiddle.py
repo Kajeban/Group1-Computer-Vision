@@ -21,7 +21,7 @@ def is_left_of_line(point, line_params):
     return y - (slope * x + intercept) > 0
 
 # cv2.namedWindow("Trackbars")
-# 
+
 # cv2.createTrackbar("L - H", "Trackbars", 0, 179, nothing)
 # cv2.createTrackbar("L - S", "Trackbars", 0, 255, nothing)
 # cv2.createTrackbar("L - V", "Trackbars", 0, 255, nothing)
@@ -33,11 +33,21 @@ frame_counter = 0
 direction = ""
 overlaps = ""
 prev_centroids = []
-prev_red_area = 0 
+prev_red_area = 0
+pass_ = ""
+
+previous_position = None
+movement_started = False
+crossed_pole = False
+direction_after_crossing = None
 
 # Define range of red color in HSV
 lower_red = np.array([160,153,104])
 upper_red = np.array([179,255,255])
+
+# Define Red in lab
+#lower_red = np.array([152,103,65])
+#upper_red = np.array([179,255,161])
     
 # Define Purple
 #lower_purple = np.array([125, 193, 47])
@@ -46,6 +56,10 @@ upper_red = np.array([179,255,255])
 # Define Yellow
 lower_yellow = np.array([19, 110, 186])
 upper_yellow = np.array([47, 255, 255])
+
+# Define Yellow (Labs)
+# lower_yellow = np.array([15, 115, 170])
+# upper_yellow = np.array([110, 255, 211])
 
 while(1):
     # Convert BGR to HSV
@@ -60,7 +74,7 @@ while(1):
 #     u_h = cv2.getTrackbarPos("U - H", "Trackbars")
 #     u_s = cv2.getTrackbarPos("U - S", "Trackbars")
 #     u_v = cv2.getTrackbarPos("U - V", "Trackbars")
-# 
+
 #     lower_colour = np.array([l_h, l_s, l_v])
 #     upper_colour = np.array([u_h, u_s, u_v])
 #     masked = cv2.inRange(hsv, lower_colour, upper_colour)
@@ -99,15 +113,13 @@ while(1):
 
     red_area = sum(cv2.contourArea(contour) for contour in red_contours)
     
-    if prev_red_area == 0:
-        overlaps = ""
-    else:
-        if red_area < prev_red_area * 0.9:
-            overlaps = ("Intersects")
-        else:
-            overlaps = ("Nope!")
-            
-    prev_red_area = red_area
+#     if prev_red_area == 0:
+#         overlaps = ""
+#     else:
+#         if red_area < prev_red_area * 0.9:
+#             overlaps = ("Intersects")
+#             
+#     prev_red_area = red_area
     
     if len(red_points) >= 2:
         # Fit a line to the red points
@@ -150,16 +162,52 @@ while(1):
                         direction = "Left"
                     else:
                         direction = "Right"
+                        
+                    if not movement_started:
+                        if is_left_of_line(centroid, (slope, intercept)):
+                            movement_started = True
+                    else:
+                        if not crossed_pole:
+                            if not is_left_of_line(previous_position, (slope, intercept)) and is_left_of_line(centroid, (slope, intercept)):
+                                crossed_pole = True
+                    
+                    previous_position = centroid
+                    
+                    if crossed_pole and direction_after_crossing is None:
+                        if is_left_of_line(centroid, (slope, intercept)):
+                            direction_after_crossing = "Left"
+                            
+                            if red_area < prev_red_area * 0.7:
+                                overlaps = ("Intersects")
+                                    
+                            prev_red_area = red_area
+                            
+                        else:
+                            direction_after_crossing = "Right"
+                            
+                            if red_area < prev_red_area * 0.7:
+                                overlaps = ("Intersects")
+                                    
+                            prev_red_area = red_area
+                            
+    if direction_after_crossing:
+        print("Direction after crossing:", direction_after_crossing)
+        if ((overlaps == "Intersects") and (direction_after_crossing == "Left")):
+            pass_ = "Gate Successfully Negotiated"
+#         direction_after_crossing = None
     
     cv2.putText(frame, "Position: {}".format(direction), (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
-    cv2.putText(frame, "Insersects: {}".format(overlaps), (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
+    cv2.putText(frame, "Status: {}".format(pass_), (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
+    cv2.putText(frame, "Direction: {}".format(direction_after_crossing), (10,100), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
+    cv2.putText(frame, "Overlaps: {}".format(overlaps), (10,120), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
     cv2.imshow('Frame', frame)
     cv2.imshow('Red Mask', red_mask)
     #cv2.imshow('purple mask', purple_mask)
     cv2.imshow('Yellow Mask', yellow_mask)
     #if overlaps:
         #time.sleep(1)
-
+    direction_after_crossing = None
+    overlaps = None
     
     if cv2.waitKey(1) & 0xFF == ord('e'):
         break
