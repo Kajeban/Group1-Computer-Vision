@@ -1,15 +1,18 @@
 import cv2
 import numpy as np
 import time 
+import paho.mqtt.publish as publish
 
-video = cv2.VideoCapture(0)
+# server_ip = "172.20.10.4"
+server_ip = "192.168.7.237"
+topic = "GateNegotiation"
+
+# Open Pi Camera/Open Video File
+
+#video = cv2.VideoCapture(0)
 # video = cv2.VideoCapture('./Photos/reverse_clip.mp4')
-#video = cv2.VideoCapture('./Photos/VID-20240223-WA0009.mp4')
+video = cv2.VideoCapture('./Photos/VID-20240223-WA0009.mp4')
 #video = cv2.VideoCapture('./Photos/VID-20240223-WA0007.mp4')
-
-#video.set(cv2.CAP_PROP_FPS, 1)
-#video.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-#video.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
 # def nothing(x):
 #     pass
@@ -20,6 +23,7 @@ def is_left_of_line(point, line_params):
     x, y = point
     return y - (slope * x + intercept) > 0
 
+#  Define trackbars to determine precise colour
 # cv2.namedWindow("Trackbars")
 # 
 # cv2.createTrackbar("L - H", "Trackbars", 0, 179, nothing)
@@ -37,6 +41,8 @@ prev_red_area = 0
 prev_green_area = 0
 pass_ = None
 pole_colour = None
+gate_status = "Null"
+message = None
 
 previous_position = None
 movement_started = False
@@ -52,12 +58,12 @@ upper_red = np.array([179,255,255])
 # upper_red = np.array([179,255,161])
     
 # Define Purple
-#lower_purple = np.array([125, 193, 47])
-#upper_purple = np.array([153, 255, 106])
+lower_yellow = np.array([125, 193, 47])
+upper_yellow = np.array([153, 255, 106])
 
 # Define Yellow
-lower_yellow = np.array([19, 114, 223])
-upper_yellow = np.array([27, 255, 255])
+# lower_yellow = np.array([19, 114, 223])
+# upper_yellow = np.array([27, 255, 255])
 
 # Define Yellow (Labs)
 # lower_yellow = np.array([15, 115, 170])
@@ -124,7 +130,7 @@ while(1):
         for point in yellow:
             yellow_points.append(point[0])
 
-#     red_area = sum(cv2.contourArea(contour) for contour in red_contours)
+    red_area = sum(cv2.contourArea(contour) for contour in red_contours)
     green_area = sum(cv2.contourArea(contour) for contour in green_contours)
     
     if (len(red_points) >= 10) or (len(green_points) >= 10):
@@ -187,37 +193,69 @@ while(1):
                     if crossed_pole and direction_after_crossing is None:
                         if is_left_of_line(centroid, (slope, intercept)):
                             direction_after_crossing = "Left"
+                            
+                            if (pole_colour == "Green"):
+                                if green_area < prev_green_area * 0.7:
+                                    overlaps = ("Intersects")
+                                    
+                                prev_green_area = green_area
+                                
+                            elif (pole_colour == "Red"):
+                                if red_area < prev_red_area * 0.8:
+                                    overlaps = ("Intersects")
+                                
+                                prev_red_area = red_area
                         
                         else:
                             direction_after_crossing = "Right"
                             
-                        if (pole_colour == "Green"):
-                            if green_area < prev_green_area * 0.7:
-                                overlaps = ("Intersects")
+                            if (pole_colour == "Green"):
+                                if green_area < prev_green_area * 0.7:
+                                    overlaps = ("Intersects")
+                                    
+                                prev_green_area = green_area
                                 
-                            prev_green_area = green_area
+                            elif (pole_colour == "Red"):
+                                if red_area < prev_red_area * 0.8:
+                                    overlaps = ("Intersects")
+                                
+                                prev_red_area = red_area
                             
-                        elif (pole_colour == "Red"):
-                            if red_area < prev_red_area * 0.7:
-                                overlaps = ("Intersects")
+                if direction_after_crossing:
+                    if (pole_colour == "Red"):
+                        if ((overlaps == "Intersects") and (direction_after_crossing == "Left")):
+                            pass_ = "Gate Successfully Negotiated"
+                            message = "Red Gate - Pass"
+#                             print(message)
+            #                 publish.single(topic, message, hostname=server_ip)
+                        else:
+                            pass_ = "Gate Unsuccesful"
+                            message = "Red Gate - Fail"
                             
-                            prev_red_area = red_area
+#                         print(message)
+            #             publish.single(topic, message, hostname=server_ip) 
+ 
+                    elif (pole_colour == "Green"):
+                        if ((overlaps == "Intersects") and (direction_after_crossing == "Right")):
+                            pass_ = "Gate Successfully Negotiated"
+                            message = "Green Gate - Pass"
+            #                 publish.single(topic, message, hostname=server_ip)
+                        else:
+                            pass_ = "Gate Unsuccesful"
                             
-    if direction_after_crossing:
-        print(direction_after_crossing)
-        if ((overlaps == "Intersects") and (direction_after_crossing == "Left")):
-            pass_ = "Gate Successfully Negotiated"
-    
-    cv2.putText(frame, "Detcting Pole: {}".format(pole_colour), (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
-    cv2.putText(frame, "Position: {}".format(direction), (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
+#                     print(message)
+
+            
+    cv2.putText(frame, "Detcting Pole: {}".format(overlaps), (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
+    cv2.putText(frame, "Position: {}".format(direction_after_crossing), (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
     cv2.putText(frame, "Status: {}".format(pass_), (10,100), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
     cv2.imshow('Frame', frame)
-    cv2.imshow('Green', yellow_mask)
+#     cv2.imshow('Red', red_mask)
     
     
     direction_after_crossing = None
     overlaps = None
-    
+    print(message)
     if cv2.waitKey(1) & 0xFF == ord('e'):
         break
     
