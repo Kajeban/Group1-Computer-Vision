@@ -1,3 +1,8 @@
+# Group 1 - MEng Group Project
+# Computer Vision Code
+# Written in Python
+# Kajeban Baskaran
+
 import cv2
 import numpy as np
 import time 
@@ -18,10 +23,10 @@ video = cv2.VideoCapture('./Photos/reverse_clip.mp4')
 #     pass
 
 # Function to check if a point is on the left or right side of the line
-def is_left_of_line(point, line_params):
-    slope, intercept = line_params
-    x, y = point
-    return y - (slope * x + intercept) > 0
+# def is_left_of_line(point, line_params):
+#     slope, intercept = line_params
+#     x, y = point
+#     return y - (slope * x + intercept) > 0
 
 #  Define trackbars to determine precise colour
 # cv2.namedWindow("Trackbars")
@@ -34,13 +39,13 @@ def is_left_of_line(point, line_params):
 # cv2.createTrackbar("U - V", "Trackbars", 0, 255, nothing)
 
 frame_counter = 0
-frame_passed = 0
-direction = None
+# frame_passed = 0
+# direction = None
 overlaps = None
-prev_centroids = []
+# prev_centroids = []
 prev_red_area = 0
 prev_green_area = 0
-pass_ = None
+# pass_ = None
 pole_colour = None
 gate_status = "Null"
 message = None
@@ -126,21 +131,24 @@ while(1):
         for point in red:
             red_points.append(point[0])
     
+    # Extract green points from contours
     green_points = []
     for green in green_contours:
         for point in green:
             green_points.append(point[0])
     
+    # Extract Yellow points form contours
     yellow_points = []
     for yellow in yellow_contours:
         for point in yellow:
             yellow_points.append(point[0])
 
-    red_area = sum(cv2.contourArea(contour) for contour in red_contours)
-    green_area = sum(cv2.contourArea(contour) for contour in green_contours)
+    red_area = sum(cv2.contourArea(contour) for contour in red_contours)  # Find total red area sum
+    green_area = sum(cv2.contourArea(contour) for contour in green_contours) # Find total green area sum
     
-    if (len(red_points) >= 10) or (len(green_points) >= 10):
+    if (len(red_points) >= 10) or (len(green_points) >= 10): #If red or green is present
         
+        # Determine if red pole or green pole
         if len(red_points) > len(green_points):
             pole_colour = "Red"
             [vx, vy, x, y] = cv2.fitLine(np.array(red_points), cv2.DIST_L2, 0, 0.01, 0.01)
@@ -149,9 +157,8 @@ while(1):
             pole_colour = "Green"
             [vx, vy, x, y] = cv2.fitLine(np.array(green_points), cv2.DIST_L2, 0, 0.01, 0.01)
             green_area = sum(cv2.contourArea(contour) for contour in green_contours)
-            
-        # Fit a line to the red point
-#         [vx, vy, x, y] = cv2.fitLine(np.array(red_points if pole_colour == "Red" else green_points, dtype=np.int64), cv2.DIST_L2, 0, 0.01, 0.01)
+        
+        # Determine slope and intercept of line
         slope = vy / vx
         intercept = y - (slope * x)
 
@@ -162,42 +169,42 @@ while(1):
         x2 = width - 1
         y2 = (slope * x2 + intercept).item()
         
+        # Limit y1 and y2 values
         y1 = max(min(y1, 2147483647), -2147483647)
         y2 = max(min(y2, 2147483647), -2147483647)
 
         # Draw the line
         cv2.line(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
         
+        # Midpoint of X points
         mp_x = int((x1+x2) / 2)
-        mp_y = int((y1+y2) / 2)
+#         mp_y = int((y1+y2) / 2)
         
-        direction = "Not in Frame"
-        # Check if any purple contour intersects the line
-        if len(yellow_points) >= 2:
+        # Check if any yellow contour intersects the line
+        if len(yellow_points) >= 2: 
             for yellow in yellow_contours:
-                largest = max(yellow_contours, key=cv2.contourArea)
+                
+                largest = max(yellow_contours, key=cv2.contourArea) # Determine largest area of yellow
+                
                 # Calculate the centroid of the contour
                 M = cv2.moments(largest)
+                
+                # Determine center co-ordinates of yellow
                 if M["m00"] != 0:
                     cx = int(M["m10"] / M["m00"])
                     cy = int(M["m01"] / M["m00"])
-                    centroid = (cx, cy)
+                    centroid = (cx, cy) 
                     
+                    # Draw circle around yellow item                    
                     cv2.circle(frame, centroid, 10, (0, 255, 255), -1)
-#                     cv2.circle(frame, (int(mp_x), int(mp_y)), 25, (0, 255, 255), -1)
-#                     cv2.putText(frame, "Detcting Pole: {}".format((int(mp_x), int(mp_y))), (10,150), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
-                    
-            
-#                     if (mp_x > cx):
-#                         print("RIGHT!")
-#                     elif (mp_x < cx):
-#                         print("LEFT!")
-                        
+                       
+                    # Determine if kayaker starts from right or left of frame   
                     if (movement_started_1 == False) and (movement_started_2 == False):
                         if (mp_x < cx):
                             movement_started_1 = True
                         elif (mp_x > cx):
                             movement_started_2 = True
+                    # Determine if kayaker crosses the pole and in which direction
                     else:
                         if ((crossed_pole == False) and previous_position != None):
                             if not (mp_x < cx) and (mp_x < previous_position) and (movement_started_1):
@@ -213,22 +220,10 @@ while(1):
                                 elif (mp_x <= cx):
                                     direction_after_crossing = ("Right")
 
-                    # Check if the centroid is on the left or right side of the line
-#                     if is_left_of_line(centroid, (slope, intercept)):
-#                         direction = "Left"
-#                     else:
-#                         direction = "Right"
-#                         
-#                     if not movement_started:
-#                         if is_left_of_line(centroid, (slope, intercept)):
-#                             movement_started = True
-#                     else:
-#                         if not crossed_pole:
-#                             if not is_left_of_line(previous_position, (slope, intercept)) and is_left_of_line(centroid, (slope, intercept)):
-#                                 crossed_pole = True
-#                     
+                    # Previous Co-ordinates == Current Co-ordinates                     
                     previous_position = cx
                     
+                    # used to determine if kayaker crosses in between poles or outside of poles
                     if movement_started_1 or movement_started_2:                            
                         if (pole_colour == "Green"):
                             if (mp_x > cx):
@@ -251,83 +246,43 @@ while(1):
                                 overlaps = ("Intersects")
                             
                             prev_red_area = red_area                   
-
-                    
-                    
-#                     if crossed_pole and direction_after_crossing is None:
-#                         if is_left_of_line(centroid, (slope, intercept)):
-#                             direction_after_crossing = "Left"
-#                             
-#                             if (pole_colour == "Green"):
-#                                 if green_area < prev_green_area * 0.7:
-#                                     overlaps = ("Intersects")
-#                                     
-#                                 prev_green_area = green_area
-#                                 
-#                             elif (pole_colour == "Red"):
-#                                 if red_area < prev_red_area * 0.8:
-#                                     overlaps = ("Intersects")
-#                                 
-#                                 prev_red_area = red_area
-#                         
-#                         else:
-#                             direction_after_crossing = "Right"
-#                             
-#                             if (pole_colour == "Green"):
-#                                 if green_area < prev_green_area * 0.7:
-#                                     overlaps = ("Intersects")
-#                                     
-#                                 prev_green_area = green_area
-#                                 
-#                             elif (pole_colour == "Red"):
-#                                 if red_area < prev_red_area * 0.8:
-#                                     overlaps = ("Intersects")
-#                                 
-#                                 prev_red_area = red_area
                 
-#                 if crossed_pole and direction_after_crossing:
-#                         frame_passed += 1
-                        
+                # Run when kayaker crosses between poles and no message has been transmitted (to avoid repeatedly sending same message)
                 if crossed_pole and (message_published == False):
                     if (pole_colour == "Red"):
                         if ((overlaps == "Intersects") and (direction_after_crossing == "Left")):
-                            pass_ = "Gate Successfully Negotiated"
                             message = "Red Gate - Pass"
-    #                             print(message)
-            #                 publish.single(topic, message, hostname=server_ip)
+
                         else:
                             pass_ = "Gate Unsuccesful"
                             message = "Red Gate - Fail"
                             
-    #                         print(message)
-            #             publish.single(topic, message, hostname=server_ip) 
 
                     elif (pole_colour == "Green"):
                         if ((overlaps == "Intersects") and (direction_after_crossing == "Right")):
-                            pass_ = "Gate Successfully Negotiated"
                             message = "Green Gate - Pass"
-            #                 publish.single(topic, message, hostname=server_ip)
+
                         else:
-                            pass_ = "Gate Unsuccesful"
+                            message = "Green Gate - Fail"
                     
+                    # If no message has been sent, then transmit message and set flag
                     if (message != None):
                         print(message)
     #                     publish.single(topic, message, hostname=server_ip)
                         message_published = True
                 
+        # When no yellow present, reset and ready for next kayaker/competitor
         elif len(yellow_points) <= 0:
             direction_after_crossing = None
             overlaps = None
                             
-                        
-
             
 #     cv2.putText(frame, "Detcting Pole: {}".format(overlaps), (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
-    cv2.putText(frame, "Position: {}".format(direction_after_crossing), (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
-    cv2.putText(frame, "Status: {}".format(pass_), (10,100), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
-    cv2.imshow('Frame', frame)
+    cv2.putText(frame, "Position: {}".format(direction_after_crossing), (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2) #Add Positon Text to Frame Window
+    cv2.putText(frame, "Status: {}".format(message), (10,100), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2) # Add Status Text to Frame Window
+    cv2.imshow('Frame', frame) # Open Frame Window (could be turned off when in use to save processing power)
 
-
+    # Terminate program when e is pressed
     if cv2.waitKey(1) & 0xFF == ord('e'):
         break
 
