@@ -7,9 +7,10 @@ import cv2
 import numpy as np
 import time 
 import paho.mqtt.publish as publish
+import paho.mqtt.client as mqtt
 
-# server_ip = "172.20.10.4"
-server_ip = "192.168.7.237"
+server_ip = "172.20.10.5"
+# server_ip = "192.168.7.237"
 topic = "GateNegotiation"
 
 # Open Pi Camera/Open Video File
@@ -18,6 +19,15 @@ topic = "GateNegotiation"
 video = cv2.VideoCapture('./Photos/reverse_clip.mp4')
 # video = cv2.VideoCapture('./Photos/VID-20240223-WA0009.mp4')
 # video = cv2.VideoCapture('./Photos/VID-20240223-WA0007.mp4')
+
+def check_mqtt(server_ip):
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    try:
+        client.connect(server_ip, 1883, 60)
+        client.disconnect()
+        return True
+    except OSError:
+        return False
 
 # def nothing(x):
 #     pass
@@ -268,7 +278,10 @@ while(1):
                     # If no message has been sent, then transmit message and set flag
                     if (message != None):
                         print(message)
-    #                     publish.single(topic, message, hostname=server_ip)
+                        
+                        if check_mqtt(server_ip) == True:
+                            publish.single(topic, message, hostname=server_ip)
+                            
                         message_published = True
                 
         # When no yellow present, reset and ready for next kayaker/competitor
