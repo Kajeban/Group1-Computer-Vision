@@ -8,14 +8,17 @@ import numpy as np
 import time 
 import paho.mqtt.publish as publish
 import paho.mqtt.client as mqtt
+import subprocess
 
 server_ip = "172.20.10.5"
 # server_ip = "192.168.7.237"
 topic = "GateNegotiation"
+topic2 = "Temperature"
+topic3 = "MemoryUse"
 
 # Open Pi Camera/Open Video File
 
-#video = cv2.VideoCapture(0)
+# video = cv2.VideoCapture(0)
 video = cv2.VideoCapture('./Photos/reverse_clip.mp4')
 # video = cv2.VideoCapture('./Photos/VID-20240223-WA0009.mp4')
 # video = cv2.VideoCapture('./Photos/VID-20240223-WA0007.mp4')
@@ -28,6 +31,20 @@ def check_mqtt(server_ip):
         return True
     except OSError:
         return False
+# 
+# def get_core_voltage():
+#     result = subprocess.run(['vcgencmd', 'measure_temp'], capture_output = True, text = True)
+#     output = result.stdout.strip()
+#     voltage = float(output.split('=')[1][:-2])
+#     return voltage
+# 
+# def get_memory_use():
+#     with open('/proc/meminfo', 'r') as file:
+#         lines = file.readlines()
+#         mem_total = int(lines[0].split()[1]) / 1024
+#         mem_free = int(lines[1].split()[1]) / 1024
+#         mem_used = mem_total - mem_free
+#     return mem_total, mem_used, mem_free
 
 # def nothing(x):
 #     pass
@@ -60,6 +77,8 @@ pole_colour = None
 gate_status = "Null"
 message = None
 message_published = False
+temparture = None
+memory_use = None
 
 previous_position = None
 movement_started_1 = False
@@ -91,11 +110,24 @@ upper_yellow = np.array([153, 255, 106])
 lower_green = np.array([33, 77, 93]) #HSV Values for Green (Lower End)
 upper_green = np.array([92, 255, 255]) #HSV Values for Green (Upper End) 
 
-# message = "Red Gate - Pass"
-# publish.single(topic, message, hostname=server_ip)
+connection = False
+iterations = 0
+while (connection != True) and (iterations < 5):
+    connection = check_mqtt(server_ip)
+    print("Trying to connect... [",iterations,"]")
+    iterations += 1
 
+publish.single("Timer", "True", hostname=server_ip)
 while(1):
     # Convert BGR to HSV
+#     if connection:
+#         core_voltage = get_core_voltage()
+#         temperature = core_voltage
+#         publish.single(topic2, temperature, hostname=server_ip)
+#     
+#         total, free, used = get_memory_use()
+#         memory_use = int(used / total * 100)
+#         publish.single(topic3, memory_use, hostname=server_ip)
     
     ret, frame = video.read() #Read Pi Camera
 
@@ -117,11 +149,14 @@ while(1):
 
     frame = cv2.GaussianBlur(frame, (5,5), 0)
     
-#     frame_counter += 1
-# 
-#     if frame_counter == video.get(cv2.CAP_PROP_FRAME_COUNT):
-#         frame_counter = 0
-#         video.set(cv2.CAP_PROP_POS_FRAMES, 0)
+    frame_counter += 1
+
+    if frame_counter == video.get(cv2.CAP_PROP_FRAME_COUNT):
+        frame_counter = 0
+        video.set(cv2.CAP_PROP_POS_FRAMES, 0)
+#         direction_after_crossing = None
+#         overlaps = None
+#         message_published = False
 
     # Threshold the HSV image to get only red colors
     red_mask = cv2.inRange(hsv, lower_red, upper_red)
@@ -279,7 +314,7 @@ while(1):
                     if (message != None):
                         print(message)
                         
-                        if check_mqtt(server_ip) == True:
+                        if connection == True:
                             publish.single(topic, message, hostname=server_ip)
                             
                         message_published = True
@@ -288,18 +323,23 @@ while(1):
         elif len(yellow_points) <= 0:
             direction_after_crossing = None
             overlaps = None
+            message_published = False
                             
             
 #     cv2.putText(frame, "Detcting Pole: {}".format(overlaps), (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
     cv2.putText(frame, "Position: {}".format(direction_after_crossing), (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2) #Add Positon Text to Frame Window
     cv2.putText(frame, "Status: {}".format(message), (10,100), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2) # Add Status Text to Frame Window
     cv2.imshow('Frame', frame) # Open Frame Window (could be turned off when in use to save processing power)
-
+    
+#     cpu_usage_percent = psutil.cpu_percent(interval=1)
+#     print("CPU Usage:" , cpu_usage_percent, "%")
+          
     # Terminate program when e is pressed
     if cv2.waitKey(1) & 0xFF == ord('e'):
         break
 
 
+publish.single("Timer", "false", hostname=server_ip)
 # Close all windows
 video.release()
 cv2.destroyAllWindows()
