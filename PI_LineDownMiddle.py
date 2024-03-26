@@ -11,15 +11,15 @@ import paho.mqtt.client as mqtt
 import subprocess
 
 server_ip = "172.20.10.5"
-# server_ip = "192.168.7.237"
+# server_ip = "192.168.147.237"
 topic = "GateNegotiation"
 topic2 = "Temperature"
 topic3 = "MemoryUse"
 
 # Open Pi Camera/Open Video File
 
-# video = cv2.VideoCapture(0)
-video = cv2.VideoCapture('./Photos/reverse_clip.mp4')
+video = cv2.VideoCapture(0)
+# video = cv2.VideoCapture('./Photos/reverse_clip.mp4')
 # video = cv2.VideoCapture('./Photos/VID-20240223-WA0009.mp4')
 # video = cv2.VideoCapture('./Photos/VID-20240223-WA0007.mp4')
 
@@ -31,33 +31,13 @@ def check_mqtt(server_ip):
         return True
     except OSError:
         return False
-# 
-# def get_core_voltage():
-#     result = subprocess.run(['vcgencmd', 'measure_temp'], capture_output = True, text = True)
-#     output = result.stdout.strip()
-#     voltage = float(output.split('=')[1][:-2])
-#     return voltage
-# 
-# def get_memory_use():
-#     with open('/proc/meminfo', 'r') as file:
-#         lines = file.readlines()
-#         mem_total = int(lines[0].split()[1]) / 1024
-#         mem_free = int(lines[1].split()[1]) / 1024
-#         mem_used = mem_total - mem_free
-#     return mem_total, mem_used, mem_free
 
 # def nothing(x):
 #     pass
 
-# Function to check if a point is on the left or right side of the line
-# def is_left_of_line(point, line_params):
-#     slope, intercept = line_params
-#     x, y = point
-#     return y - (slope * x + intercept) > 0
-
-#  Define trackbars to determine precise colour
+# #  Define trackbars to determine precise colour
 # cv2.namedWindow("Trackbars")
-# 
+
 # cv2.createTrackbar("L - H", "Trackbars", 0, 179, nothing)
 # cv2.createTrackbar("L - S", "Trackbars", 0, 255, nothing)
 # cv2.createTrackbar("L - V", "Trackbars", 0, 255, nothing)
@@ -74,7 +54,6 @@ prev_red_area = 0
 prev_green_area = 0
 # pass_ = None
 pole_colour = None
-gate_status = "Null"
 message = None
 message_published = False
 temparture = None
@@ -87,24 +66,24 @@ crossed_pole = False
 direction_after_crossing = None
 
 # Define range of red color in HSV
-lower_red = np.array([160,153,104])
-upper_red = np.array([179,255,255])
+# lower_red = np.array([160,153,104])
+# upper_red = np.array([179,255,255])
 
 # Define Red in lab
-# lower_red = np.array([152,103,65])
-# upper_red = np.array([179,255,161])
+lower_red = np.array([154,85,63])
+upper_red = np.array([179,255,141])
     
 # Define Purple
-lower_yellow = np.array([125, 193, 47])
-upper_yellow = np.array([153, 255, 106])
+# lower_yellow = np.array([125, 193, 47])
+# upper_yellow = np.array([153, 255, 106])
 
 # Define Yellow
 # lower_yellow = np.array([19, 114, 223])
 # upper_yellow = np.array([27, 255, 255])
 
 # Define Yellow (Labs)
-# lower_yellow = np.array([15, 115, 170])
-# upper_yellow = np.array([110, 255, 211])
+lower_yellow = np.array([17, 104, 37])
+upper_yellow = np.array([74, 255, 173])
 
 # Define Green
 lower_green = np.array([33, 77, 93]) #HSV Values for Green (Lower End)
@@ -117,7 +96,10 @@ while (connection != True) and (iterations < 5):
     print("Trying to connect... [",iterations,"]")
     iterations += 1
 
-publish.single("Timer", "True", hostname=server_ip)
+if connection == True:
+    publish.single("Timer", "True", hostname=server_ip)
+
+# publish.single("Timer", "True", hostname=server_ip)
 while(1):
     # Convert BGR to HSV
 #     if connection:
@@ -132,7 +114,7 @@ while(1):
     ret, frame = video.read() #Read Pi Camera
 
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    
+#     
 #     l_h = cv2.getTrackbarPos("L - H", "Trackbars")
 #     l_s = cv2.getTrackbarPos("L - S", "Trackbars")
 #     l_v = cv2.getTrackbarPos("L - V", "Trackbars")
@@ -147,17 +129,17 @@ while(1):
 #     cv2.imshow("Frame", frame)
 #     cv2.imshow('Mask', masked)
 
-    frame = cv2.GaussianBlur(frame, (5,5), 0)
-    
-    frame_counter += 1
-
-    if frame_counter == video.get(cv2.CAP_PROP_FRAME_COUNT):
-        frame_counter = 0
-        video.set(cv2.CAP_PROP_POS_FRAMES, 0)
-#         direction_after_crossing = None
-#         overlaps = None
-#         message_published = False
-
+#     frame = cv2.GaussianBlur(frame, (5,5), 0)
+#     
+#     frame_counter += 1
+# 
+#     if frame_counter == video.get(cv2.CAP_PROP_FRAME_COUNT):
+#         frame_counter = 0
+#         video.set(cv2.CAP_PROP_POS_FRAMES, 0)
+# #         direction_after_crossing = None
+# #         overlaps = None
+# #         message_published = False
+# 
     # Threshold the HSV image to get only red colors
     red_mask = cv2.inRange(hsv, lower_red, upper_red)
     #purple_mask = cv2.inRange(hsv, lower_purple, upper_purple)
@@ -226,7 +208,7 @@ while(1):
 #         mp_y = int((y1+y2) / 2)
         
         # Check if any yellow contour intersects the line
-        if len(yellow_points) >= 2: 
+        if len(yellow_points) >= 15: 
             for yellow in yellow_contours:
                 
                 largest = max(yellow_contours, key=cv2.contourArea) # Determine largest area of yellow
@@ -274,7 +256,7 @@ while(1):
                             if (mp_x > cx):
                                 direction_after_crossing = ("Left")
                             elif (mp_x < cx):
-                                direction_after_crossing("Right")
+                                direction_after_crossing = ("Right")
                                 
                             if green_area < prev_green_area * 0.88:
                                 overlaps = ("Intersects")
@@ -320,20 +302,27 @@ while(1):
                         message_published = True
                 
         # When no yellow present, reset and ready for next kayaker/competitor
-        elif len(yellow_points) <= 0:
-            direction_after_crossing = None
+        elif len(yellow_points) == 0:
             overlaps = None
             message_published = False
+            message = None
+            previous_position = None
+            movement_started_1 = False
+            movement_started_2 = False
+            crossed_pole = False
+            direction_after_crossing = None
+            prev_red_area = 0
+            prev_green_area = 0
+            pole_colour = None
                             
             
-#     cv2.putText(frame, "Detcting Pole: {}".format(overlaps), (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
+    cv2.putText(frame, "Detcting Pole: {}".format(overlaps), (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
     cv2.putText(frame, "Position: {}".format(direction_after_crossing), (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2) #Add Positon Text to Frame Window
     cv2.putText(frame, "Status: {}".format(message), (10,100), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2) # Add Status Text to Frame Window
     cv2.imshow('Frame', frame) # Open Frame Window (could be turned off when in use to save processing power)
-    
-#     cpu_usage_percent = psutil.cpu_percent(interval=1)
-#     print("CPU Usage:" , cpu_usage_percent, "%")
-          
+    cv2.imshow('Red', red_mask)
+    cv2.imshow('Yellow', yellow_mask)
+
     # Terminate program when e is pressed
     if cv2.waitKey(1) & 0xFF == ord('e'):
         break
