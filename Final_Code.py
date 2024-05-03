@@ -10,11 +10,9 @@ import paho.mqtt.publish as publish
 import paho.mqtt.client as mqtt
 import subprocess
 
-server_ip = "172.20.10.5"
-# server_ip = "192.168.147.237"
+# server_ip = "172.20.10.5"
+server_ip = "192.168.81.237"
 topic = "GateNegotiation"
-topic2 = "Temperature"
-topic3 = "MemoryUse"
 
 # Open Pi Camera/Open Video File
 
@@ -96,8 +94,10 @@ while (connection != True) and (iterations < 5):
     print("Trying to connect... [",iterations,"]")
     iterations += 1
 
+timer_started = False
 if connection == True:
     publish.single("Timer", "True", hostname=server_ip)
+    timer_started = True
 
 # publish.single("Timer", "True", hostname=server_ip)
 while(1):
@@ -173,7 +173,7 @@ while(1):
     red_area = sum(cv2.contourArea(contour) for contour in red_contours)  # Find total red area sum
     green_area = sum(cv2.contourArea(contour) for contour in green_contours) # Find total green area sum
     
-    if (len(red_points) >= 10) or (len(green_points) >= 10): #If red or green is present
+    if (len(red_points) >= 40) or (len(green_points) >= 40): #If red or green is present
         
         # Determine if red pole or green pole
         if len(red_points) > len(green_points):
@@ -281,7 +281,7 @@ while(1):
                             message = "Red Gate - Pass"
 
                         else:
-                            pass_ = "Gate Unsuccesful"
+                            pass_= "Gate Unsuccesful"
                             message = "Red Gate - Fail"
                             
 
@@ -314,14 +314,24 @@ while(1):
             prev_red_area = 0
             prev_green_area = 0
             pole_colour = None
-                            
             
+    iterations = 0
+    while (connection != True) and (iterations < 2):
+        connection = check_mqtt(server_ip)
+        print("Trying to connect... [",iterations,"]")
+        iterations += 1
+                
+        
+    if (connection == True) and (timer_started == False):
+        publish.single("Timer", "True", hostname=server_ip)
+        timer_started = True
+    
     cv2.putText(frame, "Detcting Pole: {}".format(overlaps), (10,60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
     cv2.putText(frame, "Position: {}".format(direction_after_crossing), (10,80), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2) #Add Positon Text to Frame Window
     cv2.putText(frame, "Status: {}".format(message), (10,100), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2) # Add Status Text to Frame Window
     cv2.imshow('Frame', frame) # Open Frame Window (could be turned off when in use to save processing power)
-    cv2.imshow('Red', red_mask)
-    cv2.imshow('Yellow', yellow_mask)
+#     cv2.imshow('Red', red_mask)
+#     cv2.imshow('Yellow', yellow_mask)
 
     # Terminate program when e is pressed
     if cv2.waitKey(1) & 0xFF == ord('e'):
