@@ -10,7 +10,9 @@ import numpy as np
 #image = cv2.imread('/home/pi/Desktop/Group1-Camera-Vision/Photos/IMG-20240223-WA0010.jpg')
 #video = cv2.VideoCapture('/home/pi/Desktop/Group1-Camera-Vision/Photos/VID-20240223-WA0007.mp4')
 #video = cv2.VideoCapture('/home/pi/Desktop/Group1-Camera-Vision/Photos/VID-20240223-WA0009.mp4')
-video = cv2.VideoCapture('/home/pi/Desktop/Group1-Camera-Vision/Photos/reverse_clip.mp4')
+#video = cv2.VideoCapture('/home/pi/Desktop/Group1-Camera-Vision/Photos/reverse_clip.mp4')
+#video = cv2.VideoCapture('./Photos/reverse_clip.mp4')
+video = cv2.VideoCapture('C:/Users/kajeb/Group1-Camera-Vision/Photos/reverse_clip.mp4')
 
 #if image is None:
     #print("Image Error")
